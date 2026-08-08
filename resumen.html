@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Resumen Total de Pedidos</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>📊 Resumen Total de Pedidos</h1>
+      <p class="subtitulo-resumen">
+        Suma de todos los productos pedidos por todos los clientes
+      </p>
+      <button id="btn-actualizar" class="btn-actualizar">🔄 Actualizar</button>
+    </header>
+
+    <section class="tabla-resumen-wrapper">
+      <h2>Totales por producto y sabor</h2>
+      <div id="contenedor-resumen-simple">
+        <p class="vacio">Todavía no hay pedidos confirmados.</p>
+      </div>
+    </section>
+
+    <section class="tabla-resumen-wrapper">
+      <h2>Detalle por nivel de precio</h2>
+      <div id="contenedor-resumen">
+        <p class="vacio">Todavía no hay pedidos confirmados.</p>
+      </div>
+    </section>
+
+    <script src="resumen.js"></script>
+  </body>
+</html>

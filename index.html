@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Toma de Pedidos</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>🥐 Toma de Pedidos</h1>
+      <div class="cliente">
+        <label for="input-cliente">Nombre del cliente:</label>
+        <input type="text" id="input-cliente" placeholder="Ej. María" />
+      </div>
+    </header>
+
+    <main>
+      <!-- Sección 1: catálogo de productos disponibles -->
+      <section class="catalogo" id="contenedor-catalogo">
+        <h2>Productos</h2>
+
+        <div id="lista-catalogo"></div>
+        <!-- Las tarjetas de producto se generan con JS -->
+      </section>
+
+      <!-- Sección 2: el pedido que se va armando (la "factura" en curso) -->
+      <section class="pedido">
+        <h2>Pedido actual</h2>
+        <div id="contenedor-pedido">
+          <p class="vacio">Todavía no has agregado nada.</p>
+        </div>
+        <button id="btn-agregar-pedido" class="btn-confirmar">
+          ✅ Agregar pedido
+        </button>
+      </section>
+    </main>
+
+    <!-- Sección 3: historial de pedidos ya confirmados -->
+    <section class="historial">
+      <div class="historial-header">
+        <h2>Pedidos realizados</h2>
+        <div class="botones-historial">
+          <a href="resumen.html" target="_blank" class="btn-resumen"
+            >📊 Ver resumen total</a
+          >
+          <button id="btn-borrar-historial" class="btn-borrar">
+            🗑️ Borrar pedidos
+          </button>
+        </div>
+      </div>
+      <div id="contenedor-historial">
+        <p class="vacio">Todavía no hay pedidos confirmados.</p>
+      </div>
+    </section>
+
+    <script src="script.js"></script>
+  </body>
+</html>
