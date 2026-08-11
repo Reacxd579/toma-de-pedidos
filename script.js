@@ -78,7 +78,7 @@ const catalogo = [
     sabores: [],
     precios: [
       { etiqueta: "", valor: 5.5 },
-      { etiqueta: "", valor: 7 },
+      { etiqueta: "", valor: 6 },
     ],
   },
   {
