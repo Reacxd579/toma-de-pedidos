@@ -108,7 +108,7 @@ h2 {
 /* --- Tarjetas de producto (catálogo) --- */
 .producto {
   display: grid;
-  grid-template-columns: 1fr 140px 150px 70px 110px;
+  grid-template-columns: 1fr 140px 150px 90px 70px 110px;
   align-items: center;
   gap: 14px;
   padding: 16px 0;
@@ -116,7 +116,7 @@ h2 {
   font-size: 1rem;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   .producto {
     grid-template-columns: 1fr;
     justify-items: start;
@@ -151,6 +151,22 @@ h2 {
   border: 1px solid var(--border);
   text-align: center;
   font-size: 0.95rem;
+}
+
+.check-regalia {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.check-regalia-input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 
 .producto button {
@@ -213,7 +229,8 @@ h2 {
 }
 
 .btn-editar-linea,
-.btn-guardar-linea {
+.btn-guardar-linea,
+.btn-quitar-linea {
   border: none;
   padding: 7px 12px;
   border-radius: 6px;
@@ -231,8 +248,13 @@ h2 {
   background: #3f9142;
 }
 
+.btn-quitar-linea {
+  background: #c94f4f;
+}
+
 .btn-editar-linea:hover,
-.btn-guardar-linea:hover {
+.btn-guardar-linea:hover,
+.btn-quitar-linea:hover {
   opacity: 0.9;
 }
 

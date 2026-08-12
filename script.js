@@ -151,6 +151,10 @@ function renderCatalogo() {
       <span class="nombre">${producto.nombre}</span>
       ${selectHTML}
       ${selectPrecioHTML}
+      <label class="check-regalia">
+        <input type="checkbox" class="check-regalia-input">
+        🎁 Regalía
+      </label>
       <input type="number" class="input-cantidad" value="1" min="1">
       <button>Agregar</button>
     `;
@@ -188,16 +192,29 @@ contenedorCatalogo.addEventListener("click", (evento) => {
   let cantidad = Number(inputCantidad.value);
   if (!cantidad || cantidad < 1) cantidad = 1;
 
-  // Leemos el nivel de precio que el usuario eligió (Regular, Mayoreo, Especial...)
-  const selectPrecio = tarjeta.querySelector(".select-precio");
-  const precio = Number(selectPrecio.value);
-  const opcionSeleccionada = selectPrecio.options[selectPrecio.selectedIndex];
-  const etiquetaPrecio = opcionSeleccionada.dataset.etiqueta;
+  // Leemos el checkbox de "Regalía". Si está marcado, el producto se agrega
+  // SIN costo (precio 0) sin importar qué nivel de precio esté seleccionado.
+  const checkRegalia = tarjeta.querySelector(".check-regalia-input");
+
+  let precio;
+  let etiquetaPrecio;
+
+  if (checkRegalia.checked) {
+    precio = 0;
+    etiquetaPrecio = "Regalía";
+  } else {
+    // Leemos el nivel de precio que el usuario eligió (Regular, Mayoreo, Especial...)
+    const selectPrecio = tarjeta.querySelector(".select-precio");
+    precio = Number(selectPrecio.value);
+    const opcionSeleccionada = selectPrecio.options[selectPrecio.selectedIndex];
+    etiquetaPrecio = opcionSeleccionada.dataset.etiqueta;
+  }
 
   agregarAlPedido(nombreProducto, sabor, cantidad, precio, etiquetaPrecio);
 
-  // Reseteamos el input a 1 después de agregar
+  // Reseteamos el input a 1 y el checkbox después de agregar
   inputCantidad.value = 1;
+  checkRegalia.checked = false;
 });
 
 function agregarAlPedido(nombre, sabor, cantidad, precio, etiquetaPrecio) {
@@ -223,6 +240,17 @@ function agregarAlPedido(nombre, sabor, cantidad, precio, etiquetaPrecio) {
 
 const contenedorPedido = document.getElementById("contenedor-pedido");
 
+// Función auxiliar: arma el texto de precio para mostrar en una línea.
+// Si el item es una regalía, mostramos "Regalía" en vez de "Q0/u".
+function formatearInfoPrecio(item) {
+  if (item.etiquetaPrecio === "Regalía") {
+    return "Regalía";
+  }
+  return item.etiquetaPrecio
+    ? `${item.etiquetaPrecio} Q${item.precio}/u`
+    : `Q${item.precio}/u`;
+}
+
 function renderPedido() {
   // Encabezado con el nombre del cliente (si escribió algo)
   const encabezadoCliente =
@@ -244,9 +272,7 @@ function renderPedido() {
       const etiquetaProducto = item.sabor
         ? `${item.nombre} de ${item.sabor}`
         : item.nombre;
-      const infoPrecio = item.etiquetaPrecio
-        ? `${item.etiquetaPrecio} Q${item.precio}/u`
-        : `Q${item.precio}/u`;
+      const infoPrecio = formatearInfoPrecio(item);
       const subtotal = item.precio * item.cantidad;
 
       // Si esta línea es la que se está editando, mostramos un input + botón "Guardar"
@@ -258,11 +284,12 @@ function renderPedido() {
                 </div>`;
       }
 
-      // Si no, mostramos la línea normal con el botón "Editar"
+      // Si no, mostramos la línea normal con los botones "Editar" y "Quitar"
       return `<div class="linea-pedido">
                 <span>${item.cantidad}x ${etiquetaProducto} <span class="precio-unitario">[${infoPrecio}]</span></span>
                 <span class="subtotal-linea">Q${subtotal.toFixed(2)}</span>
                 <button class="btn-editar-linea" data-indice="${indice}">✏️ Editar</button>
+                <button class="btn-quitar-linea" data-indice="${indice}">🗑️ Quitar</button>
               </div>`;
     })
     .join("");
@@ -289,11 +316,33 @@ function renderPedido() {
 contenedorPedido.addEventListener("click", (evento) => {
   const botonEditar = evento.target.closest(".btn-editar-linea");
   const botonGuardar = evento.target.closest(".btn-guardar-linea");
+  const botonQuitar = evento.target.closest(".btn-quitar-linea");
 
   if (botonEditar) {
     // Guardamos qué línea se va a editar y volvemos a pintar;
     // renderPedido() va a mostrar el input en esa línea.
     editandoIndice = Number(botonEditar.dataset.indice);
+    renderPedido();
+    return;
+  }
+
+  if (botonQuitar) {
+    const indice = Number(botonQuitar.dataset.indice);
+    const item = pedido[indice];
+    const etiquetaProducto = item.sabor
+      ? `${item.nombre} de ${item.sabor}`
+      : item.nombre;
+
+    const confirmado = confirm(
+      `¿Quitar "${item.cantidad}x ${etiquetaProducto}" del pedido?`,
+    );
+    if (!confirmado) return;
+
+    // .splice(indice, 1) elimina 1 elemento a partir de esa posición del array
+    pedido.splice(indice, 1);
+
+    // Si justo estábamos editando esa línea (o una que ya no existe), salimos del modo edición
+    editandoIndice = null;
     renderPedido();
     return;
   }
@@ -378,8 +427,9 @@ function renderHistorial() {
             ? `${item.nombre} de ${item.sabor}`
             : item.nombre;
           const subtotal = item.precio * item.cantidad;
+          const infoPrecio = formatearInfoPrecio(item);
           return `<div class="linea-pedido">
-                    <span>${item.cantidad}x ${etiqueta} <span class="precio-unitario">[${item.etiquetaPrecio} Q${item.precio}/u]</span></span>
+                    <span>${item.cantidad}x ${etiqueta} <span class="precio-unitario">[${infoPrecio}]</span></span>
                     <span>Q${subtotal.toFixed(2)}</span>
                   </div>`;
         })
