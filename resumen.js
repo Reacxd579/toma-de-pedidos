@@ -1,6 +1,56 @@
 // Leemos el historial guardado por la página principal
 let historial = [];
 
+// Orden personalizado para la tabla "Totales por producto y sabor".
+// Cada entrada es "Producto||Sabor" (o "Producto||" si no tiene sabor).
+// Si un producto+sabor no está en esta lista, se muestra al final, en orden alfabético.
+const ordenPersonalizado = [
+  // Dona Anillo
+  "Dona Anillo||Glase",
+  "Dona Anillo||Chocolate",
+  "Dona Anillo||Arcoiris",
+  "Dona Anillo||ChocoArcoiris",
+  "Dona Anillo||Azúcar",
+  "Dona Anillo||Fresa",
+  "Dona Anillo||Rayada de Chocolate",
+  "Dona Anillo||Rayada de Vainilla",
+  "Dona Anillo||Selva Negra",
+  "Dona Anillo||Moka",
+  "Dona Anillo||Vainilla con Coco",
+  "Dona Anillo||Chocolate con Coco",
+  "Dona Anillo||Chicle",
+  "Dona Anillo||Temporada",
+  // Dona
+  "Dona||Choco Manjar",
+  "Dona||Cajeta",
+  "Dona||Fresa",
+  "Dona||Manzana",
+  "Dona||Manjar",
+  "Dona||Mora",
+  "Dona||Choco Fresa",
+  "Dona||Choco Piña",
+  // Mini Dona
+  "Mini Dona||Choco Manjar",
+  "Mini Dona||Cajeta",
+  "Mini Dona||Fresa",
+  "Mini Dona||Manzana",
+  "Mini Dona||Manjar",
+  // Productos sin sabor
+  "Empanada de Pollo||",
+  "Volovan||",
+  "Crossant||",
+  "Cubilete||",
+  "Encanelado||",
+  // Strudel
+  "Strudel||Manjar",
+  "Strudel||Piña",
+  "Strudel||Fresa",
+  "Strudel||Manzana",
+  // Sin sabor
+  "Pie de queso||",
+  "Pastel de Banano||",
+];
+
 function cargarHistorial() {
   const datosGuardados = localStorage.getItem("historialPedidos");
   historial = datosGuardados ? JSON.parse(datosGuardados) : [];
@@ -60,6 +110,21 @@ function generarResumen() {
     todosLosItems,
     (item) => `${item.nombre}||${item.sabor ?? ""}`,
   );
+
+  // Reordenamos esta tabla según la lista personalizada de arriba.
+  // Los productos que sí están en la lista van en ese orden;
+  // cualquier producto nuevo que no esté contemplado cae al final, alfabéticamente.
+  filasSimples.sort((a, b) => {
+    const claveA = `${a.nombre}||${a.sabor ?? ""}`;
+    const claveB = `${b.nombre}||${b.sabor ?? ""}`;
+    const posA = ordenPersonalizado.indexOf(claveA);
+    const posB = ordenPersonalizado.indexOf(claveB);
+
+    if (posA !== -1 && posB !== -1) return posA - posB; // ambos en la lista: por posición
+    if (posA !== -1) return -1; // solo A está en la lista: A va primero
+    if (posB !== -1) return 1; // solo B está en la lista: B va primero
+    return claveA.localeCompare(claveB); // ninguno está en la lista: alfabético
+  });
 
   const filasSimplesHTML = filasSimples
     .map(
