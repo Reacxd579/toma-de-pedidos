@@ -332,6 +332,23 @@ h2 {
   margin-bottom: 0;
 }
 
+.btn-descargar-imagen {
+  margin-top: 14px;
+  width: 100%;
+  background: #7a5c3e;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-descargar-imagen:hover {
+  opacity: 0.9;
+}
+
 .historial-header {
   display: flex;
   justify-content: space-between;

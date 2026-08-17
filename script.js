@@ -369,15 +369,35 @@ contenedorPedido.addEventListener("click", (evento) => {
   }
 });
 
-// ===== Paso 5: confirmar el pedido =====
+// ===== Paso 5: confirmar el pedido (ahora guardado en Firestore) =====
 
-// Aquí guardamos todos los pedidos ya confirmados.
-// Si ya había pedidos guardados de una sesión anterior, los recuperamos.
-const historialGuardado = localStorage.getItem("historialPedidos");
-let historial = historialGuardado ? JSON.parse(historialGuardado) : [];
+// Aquí guardamos todos los pedidos ya confirmados. Ya no lo llenamos
+// manualmente: lo mantiene actualizado el "listener" de Firestore de abajo.
+let historial = [];
 
 const contenedorHistorial = document.getElementById("contenedor-historial");
 const btnAgregarPedido = document.getElementById("btn-agregar-pedido");
+
+// onSnapshot "escucha" la colección "pedidos" en Firestore todo el tiempo.
+// Cada vez que hay un cambio (desde ESTE dispositivo o desde CUALQUIER OTRO
+// dispositivo conectado a la misma base de datos), esta función se vuelve
+// a ejecutar automáticamente con los datos más recientes.
+db.collection("pedidos")
+  .orderBy("fecha", "asc")
+  .onSnapshot(
+    (snapshot) => {
+      // Convertimos cada documento de Firestore en un objeto normal de JS,
+      // guardando también su "id" (lo necesitamos para poder borrarlo después)
+      historial = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      renderHistorial();
+    },
+    (error) => {
+      console.error("Error al escuchar los pedidos:", error);
+      alert(
+        "No se pudo conectar con la base de datos. Revisa tu conexión a internet.",
+      );
+    },
+  );
 
 btnAgregarPedido.addEventListener("click", () => {
   if (pedido.length === 0) {
@@ -392,25 +412,44 @@ btnAgregarPedido.addEventListener("click", () => {
     0,
   );
 
-  historial.push({
-    cliente: nombreCliente.trim() === "" ? "Sin nombre" : nombreCliente,
-    items: pedido, // guardamos los items tal cual estaban
-    totalUnidades,
-    totalDinero,
-  });
+  // Deshabilitamos el botón mientras se guarda, para evitar doble clic
+  btnAgregarPedido.disabled = true;
+  btnAgregarPedido.textContent = "Guardando...";
 
-  // Reiniciamos el pedido actual y el nombre para el siguiente cliente
-  pedido = [];
-  nombreCliente = "";
-  editandoIndice = null;
-  inputCliente.value = "";
-
-  renderPedido();
-  renderHistorial();
-
-  // Guardamos el historial en localStorage para que la página de resumen
-  // (que se abre en otra pestaña) pueda leerlo.
-  localStorage.setItem("historialPedidos", JSON.stringify(historial));
+  // .add() guarda un nuevo documento en la colección "pedidos" de Firestore.
+  // Es una operación asíncrona (tarda un poquito porque viaja por internet),
+  // por eso usamos .then() para saber cuándo terminó.
+  db.collection("pedidos")
+    .add({
+      cliente: nombreCliente.trim() === "" ? "Sin nombre" : nombreCliente,
+      items: pedido,
+      totalUnidades,
+      totalDinero,
+      // serverTimestamp() usa la hora del servidor de Google, no la del
+      // celular/computadora de quien lo registra (así no hay desorden si
+      // alguien tiene la hora mal configurada en su dispositivo)
+      fecha: firebase.firestore.FieldValue.serverTimestamp(),
+    })
+    .then(() => {
+      // Reiniciamos el pedido actual y el nombre para el siguiente cliente.
+      // No hace falta llamar renderHistorial() aquí: en cuanto Firestore
+      // confirma el guardado, el onSnapshot de arriba se dispara solo.
+      pedido = [];
+      nombreCliente = "";
+      editandoIndice = null;
+      inputCliente.value = "";
+      renderPedido();
+    })
+    .catch((error) => {
+      console.error("Error al guardar el pedido:", error);
+      alert(
+        "No se pudo guardar el pedido. Revisa tu conexión a internet e intenta de nuevo.",
+      );
+    })
+    .finally(() => {
+      btnAgregarPedido.disabled = false;
+      btnAgregarPedido.textContent = "✅ Agregar pedido";
+    });
 });
 
 function renderHistorial() {
@@ -436,13 +475,14 @@ function renderHistorial() {
         .join("");
 
       return `
-        <div class="tarjeta-historial">
+        <div class="tarjeta-historial" data-indice="${indice}">
           <p class="nombre-cliente">Pedido #${indice + 1} — <strong>${pedidoConfirmado.cliente}</strong></p>
           ${filasItems}
           <div class="resumen">
             <div class="linea-resumen"><span>Total de unidades</span><span>${pedidoConfirmado.totalUnidades}</span></div>
             <div class="linea-resumen total"><span>Total pagado</span><span>Q${pedidoConfirmado.totalDinero.toFixed(2)}</span></div>
           </div>
+          <button class="btn-descargar-imagen" data-indice="${indice}">📷 Descargar imagen</button>
         </div>
       `;
     })
@@ -451,7 +491,43 @@ function renderHistorial() {
   contenedorHistorial.innerHTML = tarjetasPedidos;
 }
 
-// ===== Paso 6: borrar todos los pedidos confirmados =====
+// ===== Descargar un pedido confirmado como imagen =====
+
+contenedorHistorial.addEventListener("click", (evento) => {
+  const boton = evento.target.closest(".btn-descargar-imagen");
+  if (!boton) return;
+
+  const indice = Number(boton.dataset.indice);
+  const tarjeta = boton.closest(".tarjeta-historial");
+  const pedidoConfirmado = historial[indice];
+
+  // html2canvas "toma una foto" del elemento HTML que le pasamos y nos
+  // devuelve un <canvas> (un lienzo de dibujo) con esa imagen.
+  // ignoreElements le dice que NO incluya el propio botón en la foto.
+  html2canvas(tarjeta, {
+    backgroundColor: "#ffffff",
+    scale: 2, // el doble de resolución, para que se vea nítido al hacer zoom
+    ignoreElements: (el) => el.classList.contains("btn-descargar-imagen"),
+  }).then((canvas) => {
+    // Convertimos el canvas en una URL de imagen PNG
+    const urlImagen = canvas.toDataURL("image/png");
+
+    // Armamos un nombre de archivo limpio a partir del nombre del cliente
+    // (reemplazamos espacios y caracteres raros por guiones bajos)
+    const nombreLimpio = pedidoConfirmado.cliente
+      .trim()
+      .replace(/[^a-zA-Z0-9]+/g, "_");
+
+    // Creamos un link invisible con el atributo "download" y le hacemos
+    // clic por código — así el navegador descarga el archivo automáticamente.
+    const link = document.createElement("a");
+    link.download = `pedido-${indice + 1}-${nombreLimpio}.png`;
+    link.href = urlImagen;
+    link.click();
+  });
+});
+
+// ===== Paso 6: borrar todos los pedidos confirmados (ahora en Firestore) =====
 
 const btnBorrarHistorial = document.getElementById("btn-borrar-historial");
 
@@ -461,15 +537,37 @@ btnBorrarHistorial.addEventListener("click", () => {
     return;
   }
 
-  // confirm() muestra un cuadro de sí/no; si el usuario cancela, no hacemos nada
   const confirmado = confirm(
     "¿Seguro que quieres borrar TODOS los pedidos realizados? Esta acción no se puede deshacer.",
   );
   if (!confirmado) return;
 
-  historial = [];
-  localStorage.setItem("historialPedidos", JSON.stringify(historial));
-  renderHistorial();
+  btnBorrarHistorial.disabled = true;
+  btnBorrarHistorial.textContent = "Borrando...";
+
+  // Un "batch" agrupa varias operaciones de borrado en una sola,
+  // más eficiente que borrar documento por documento uno a la vez.
+  const lote = db.batch();
+  historial.forEach((pedidoConfirmado) => {
+    lote.delete(db.collection("pedidos").doc(pedidoConfirmado.id));
+  });
+
+  lote
+    .commit()
+    .then(() => {
+      // No hace falta llamar renderHistorial() aquí: el onSnapshot
+      // detecta el borrado y actualiza la pantalla automáticamente.
+    })
+    .catch((error) => {
+      console.error("Error al borrar los pedidos:", error);
+      alert(
+        "No se pudieron borrar los pedidos. Revisa tu conexión a internet.",
+      );
+    })
+    .finally(() => {
+      btnBorrarHistorial.disabled = false;
+      btnBorrarHistorial.textContent = "🗑️ Borrar pedidos";
+    });
 });
 
 // ===== Paso 4a: nombre del cliente =====
@@ -479,6 +577,3 @@ inputCliente.addEventListener("input", () => {
   nombreCliente = inputCliente.value;
   renderPedido();
 });
-
-// ===== Pintar el historial recuperado (si había pedidos de antes) al cargar la página =====
-renderHistorial();

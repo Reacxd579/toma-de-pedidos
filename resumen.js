@@ -1,4 +1,5 @@
-// Leemos el historial guardado por la página principal
+// Leemos el historial de pedidos directo desde Firestore (no de localStorage),
+// así esta página ve los pedidos hechos desde CUALQUIER dispositivo.
 let historial = [];
 
 // Orden personalizado para la tabla "Totales por producto y sabor".
@@ -50,11 +51,6 @@ const ordenPersonalizado = [
   "Pie de queso||",
   "Pastel de Banano||",
 ];
-
-function cargarHistorial() {
-  const datosGuardados = localStorage.getItem("historialPedidos");
-  historial = datosGuardados ? JSON.parse(datosGuardados) : [];
-}
 
 const contenedorResumen = document.getElementById("contenedor-resumen");
 const contenedorResumenSimple = document.getElementById(
@@ -221,27 +217,29 @@ function generarResumen() {
   `;
 }
 
-// Cargamos los datos guardados y pintamos las tablas por primera vez
-cargarHistorial();
-generarResumen();
+// ===== Conexión en tiempo real con Firestore =====
+// onSnapshot "escucha" la colección "pedidos" todo el tiempo. Cada vez que
+// hay un cambio (agregar un pedido, borrar todo, etc.) desde CUALQUIER
+// dispositivo, esta función se vuelve a ejecutar sola con los datos al día,
+// sin que el usuario tenga que recargar la página.
+db.collection("pedidos")
+  .orderBy("fecha", "asc")
+  .onSnapshot(
+    (snapshot) => {
+      historial = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      generarResumen();
+    },
+    (error) => {
+      console.error("Error al escuchar los pedidos:", error);
+      alert(
+        "No se pudo conectar con la base de datos. Revisa tu conexión a internet.",
+      );
+    },
+  );
 
-// ===== Actualización automática =====
-// El evento "storage" se dispara en ESTA pestaña cuando OTRA pestaña
-// (la de la app principal) modifica el localStorage. Así, si tienes
-// esta página de resumen abierta y agregas un pedido nuevo en la otra
-// pestaña, esta tabla se actualiza sola sin que tengas que recargar.
-window.addEventListener("storage", (evento) => {
-  if (evento.key === "historialPedidos") {
-    cargarHistorial();
-    generarResumen();
-  }
-});
-
-// ===== Actualización manual =====
-// Por si acaso el evento automático no se dispara (por ejemplo, si
-// abriste esta pestaña antes de que existiera algún pedido).
+// El botón "Actualizar" ya no es indispensable (los datos llegan solos en
+// tiempo real), pero lo dejamos como respaldo manual por si acaso.
 const btnActualizar = document.getElementById("btn-actualizar");
 btnActualizar.addEventListener("click", () => {
-  cargarHistorial();
   generarResumen();
 });
